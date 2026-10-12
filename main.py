@@ -31,8 +31,10 @@ def run_flask():
 threading.Thread(target=run_flask, daemon=True).start()
 
 # ----------------- CONFIGURATION -----------------
-# अपना असली Telegram Bot Token यहाँ रखें
-TELEGRAM_BOT_TOKEN = "8928062533:AAGg9TLho1hU1Jg8O3jL6o8k9bN1v1m4g1g"
+# 
+अपना असली Telegram Bot Token यहाँ रखें
+TELEGRAM_BOT_TOKEN = "8928062533:AAG3U4Uoed3mQ_IGvbd0xRugbMYJQmMIOGk"
+
 
 # बैकग्राउंड म्यूज़िक (मुफ़्त रॉयल्टी-फ्री ट्रैक)
 BG_MUSIC_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"
