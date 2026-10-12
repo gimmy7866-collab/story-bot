@@ -21,7 +21,7 @@ def run_flask():
 
 threading.Thread(target=run_flask, daemon=True).start()
 
-TELEGRAM_BOT_TOKEN = "8928062533:AAGg9TLho1hU1Jg8O3jL6o8k9bN1v1m4g1g"
+TELEGRAM_BOT_TOKEN = "8928062533:AAG3U4Uoed3mQ_lGvbd0xRugbMYJQmMlOGk"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
