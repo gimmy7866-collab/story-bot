@@ -1,12 +1,10 @@
-import os, requests, threading
-import nest_asyncio
+import os, requests, threading, asyncio
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from openai import OpenAI
 from gtts import gTTS
 
-# MoviePy import fix for v2.x and v1.x compatibility
 try:
     from moviepy import ImageClip, AudioFileClip
 except ImportError:
@@ -22,10 +20,7 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     server.run(host="0.0.0.0", port=port)
 
-# Flask server ko turant start karna Render port detection ke liye
 threading.Thread(target=run_flask, daemon=True).start()
-
-nest_asyncio.apply()
 
 TELEGRAM_BOT_TOKEN = "8928062533:AAFaU5SdY3r54ol7y-VKuvLJPjAjXcsTsJE"
 OPENAI_API_KEY = "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"
@@ -62,10 +57,12 @@ async def generate_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     os.remove("scene.jpg")
     os.remove("video.mp4")
 
-if __name__ == "__main__":
+def main():
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_video))
     print("बॉट चालू हो गया है...")
     app.run_polling()
-    
+
+if __name__ == "__main__":
+    main()
