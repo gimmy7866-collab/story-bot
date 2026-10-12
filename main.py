@@ -1,10 +1,22 @@
-import os, requests
+ import os, requests, threading
 import nest_asyncio
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from openai import OpenAI
 from gtts import gTTS
 from moviepy.editor import ImageClip, AudioFileClip
+
+# Flask server to keep Render Web Service alive
+server = Flask(__name__)
+
+@server.route('/')
+def home():
+    return "Bot is running 24/7!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    server.run(host="0.0.0.0", port=port)
 
 nest_asyncio.apply()
 
@@ -43,9 +55,15 @@ async def generate_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     os.remove("scene.jpg")
     os.remove("video.mp4")
 
-app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_video))
+if __name__ == "__main__":
+    threading.Thread(target=run_flask).start()
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_video))
+    print("बॉट चालू हो गया है...")
+    app.run_polling()
+    
 
-print("बॉट चालू हो गया है...")
-app.run_polling()
+
+    
+    
