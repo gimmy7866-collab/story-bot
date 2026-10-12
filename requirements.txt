@@ -4,3 +4,4 @@ gtts
 moviepy
 requests
 nest_asyncio
+flask
