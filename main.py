@@ -16,7 +16,7 @@ from moviepy import (
     concatenate_videoclips
 )
 
-# ----------------- FLASK 24/7 SERVER -----------------
+# ----------------- FLASK 24/7 KEEP-ALIVE SERVER -----------------
 server = Flask(__name__)
 
 @server.route('/')
@@ -35,7 +35,6 @@ BG_MUSIC_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf0
 
 
 def clear_webhook():
-    """पुराने किसी भी स्पैम वेबहुक को पूरी तरह हटाने के लिए"""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=True"
         requests.get(url, timeout=10)
@@ -55,12 +54,12 @@ def download_bg_music():
 
 def generate_story_scenes(title):
     system_prompt = (
-        "You are an expert 2D animation storyteller. "
-        "Create an engaging Hindi moral story based on the title. "
-        "Divide it into exactly 3 sequential visual scenes. "
+        "You are an expert horror/moral story scriptwriter. "
+        "Create an engaging Hindi story based on the user's title. "
+        "Divide the story into 4 sequential scenes. "
         "Return ONLY a pure valid JSON array of objects with keys: "
-        "'scene_no', 'characters', 'visual_prompt', 'narration_hindi'. "
-        "'visual_prompt' must be a short descriptive English prompt under 25 words describing characters and action in 2D cartoon style. "
+        "'scene_no', 'visual_prompt', 'narration_hindi'. "
+        "'visual_prompt' must be a short descriptive English prompt under 25 words specifying 2D Indian cartoon animation style, spooky or dramatic lighting. "
         "Never include markdown links, brackets, or urls. Return raw JSON array only."
     )
     url = f"https://text.pollinations.ai/{urllib.parse.quote(title)}?system={urllib.parse.quote(system_prompt)}"
@@ -75,21 +74,23 @@ def generate_story_scenes(title):
         return [
             {
                 "scene_no": 1,
-                "characters": "Main characters",
-                "visual_prompt": f"2D cartoon illustration of {title}, colorful Disney animation style",
-                "narration_hindi": f"एक समय की बात है, हमारी कहानी की शुरुआत होती है {title} से।"
+                "visual_prompt": f"2D horror cartoon style illustration of {title}, dark atmosphere",
+                "narration_hindi": f"रात के 9 बजे थे, और कहानी की शुरुआत होती है {title} से।"
             },
             {
                 "scene_no": 2,
-                "characters": "Characters interacting",
-                "visual_prompt": f"2D animated cute cartoon scene of {title}, colorful fantasy background",
-                "narration_hindi": "कहानी में सभी किरदारों ने मिलकर एक बड़ा फैसला लिया और आगे बढ़े।"
+                "visual_prompt": "2D Indian family home interior, dramatic expressions, cartoon animation style",
+                "narration_hindi": "घर के अंदर सब कुछ शांत था, तभी अचानक एक अजीब घटना घटी।"
             },
             {
                 "scene_no": 3,
-                "characters": "Happy ending",
-                "visual_prompt": f"2D joyful cartoon ending of {title}, vibrant fairytale vector art",
-                "narration_hindi": "अंत में सब कुछ बहुत अच्छा हुआ और कहानी से हमें एक सुंदर सीख मिली।"
+                "visual_prompt": "2D spooky spooky corridor at night, suspenseful cartoon art, high quality",
+                "narration_hindi": "डर के मारे सबके हाथ-पैर ठंडे पड़ने लगे, कोई समझ नहीं पा रहा था क्या करें।"
+            },
+            {
+                "scene_no": 4,
+                "visual_prompt": "2D dramatic cinematic cartoon ending scene, spooky twist, vector art",
+                "narration_hindi": "इस डरावनी घटना ने सबको चौंका दिया और एक नया रहस्य सामने आ गया।"
             }
         ]
 
@@ -113,25 +114,37 @@ def create_animated_clip(image_path, audio_path):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🎬 *2D एनिमेटेड स्टोरी वीडियो बॉट में आपका स्वागत है!*\n\n"
-        "बस मुझे किसी भी कहानी का **शीर्षक (Title)** लिखकर भेजें।\n\n"
+        "🎬 *2D स्टोरी वीडियो ऑटोमेशन बॉट*\n\n"
+        "बस मुझे किसी भी कहानी का **शीर्षक (Title)** लिखकर भेजें (उदा. 'चुड़ैल मां', 'रामु की हवेली')।\n\n"
         "बॉट अपने आप:\n"
-        "✨ किरदार और स्क्रिप्ट चुनेगा\n"
-        "🎨 2D कार्टून एनीमेशन सीन बनाएगा\n"
-        "🎙️ हिंदी आवाज़ और बैकग्राउंड म्यूज़िक जोड़ेगा\n"
-        "📽️ पूरा वीडियो तैयार करके भेजेगा!"
+        "📝 सीन-बाय-सीन स्क्रिप्ट बनाएगा\n"
+        "🎨 2D कार्टून एनीमेशन सीन तैयार करेगा\n"
+        "🎙️ हिंदी वॉयसओवर और बैकग्राउंड म्यूज़िक जोड़ेगा\n"
+        "📽️ पूरा वीडियो बनाकर भेजेगा!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
 
 async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title = update.message.text.strip()
-    status_msg = await update.message.reply_text(f"📖 '{title}' पर 2D स्क्रिप्ट और किरदार तैयार किए जा रहे हैं...")
+    
+    # स्टेप 1: पहले स्क्रिप्ट जनरेट करके दिखाना (जैसा वीडियो में देखा)
+    script_msg = await update.message.reply_text(f"📝 '{title}' की स्क्रिप्ट तैयार की जा रही है...")
+    
     loop = asyncio.get_event_loop()
+    scenes = await loop.run_in_executor(None, generate_story_scenes, title)
+    
+    script_text = f"📜 *'{title}' की स्क्रिप्ट:*\n\n"
+    for sc in scenes:
+        script_text += f"🔹 **SCENE {sc.get('scene_no', 1)}:**\n{sc.get('narration_hindi')}\n\n"
+    
+    await script_msg.edit_text(script_text, parse_mode="Markdown")
+    
+    # स्टेप 2: अब वीडियो रेंडर करना शुरू करना
+    status_msg = await update.message.reply_text("🚀 वीडियो जनरेट हो रहा है, कृपया प्रतीक्षा करें...")
 
     def process():
         download_bg_music()
-        scenes = generate_story_scenes(title)
         video_clips = []
         cleanup_files = []
 
@@ -144,12 +157,14 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
             clean_text = re.sub(r"https?://\S+", "", clean_text)
             clean_text = re.sub(r"[^a-zA-Z0-9\s,]", "", clean_text).strip()
 
+            # 1. Voiceover
             voice_file = f"voice_{scene_num}.mp3"
             tts = gTTS(text=narration, lang='hi')
             tts.save(voice_file)
             cleanup_files.append(voice_file)
 
-            encoded_prompt = urllib.parse.quote(f"{clean_text}, 2D cute animation, flat vector art, Disney Pixar 2d style, bright colors")
+            # 2. 2D Cartoon Image
+            encoded_prompt = urllib.parse.quote(f"{clean_text}, 2D Indian cartoon animation style, storybook vector art, high quality, 16:9")
             img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded_prompt}?width=1280&height=720&nologo=true"
 
             img_file = f"scene_{scene_num}.jpg"
@@ -158,6 +173,7 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
                 f.write(img_resp.content)
             cleanup_files.append(img_file)
 
+            # 3. Motion Clip
             clip = create_animated_clip(img_file, voice_file)
             video_clips.append(clip)
 
@@ -185,11 +201,9 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
 
         return final_video_file, cleanup_files, len(scenes)
 
-    await status_msg.edit_text("🎨 2D कार्टून सीन्स, आवाज़ और एनीमेशन रेंडर हो रहा है... (1-2 मिनट प्रतीक्षा करें)")
-
     try:
         video_path, temp_files, scene_count = await loop.run_in_executor(None, process)
-        caption = f"🎬 *शीर्षक:* {title}\n✨ *सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूज़िक और हिंदी आवाज़ के साथ!"
+        caption = f"🎬 *शीर्षक:* {title}\n✨ *सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूज़िक और हिंदी आवाज़ के साथ तैयार!"
         with open(video_path, "rb") as vid:
             await update.message.reply_video(video=vid, caption=caption, parse_mode="Markdown")
 
@@ -213,4 +227,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
