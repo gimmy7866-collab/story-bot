@@ -1,0 +1,6 @@
+python-telegram-bot
+openai
+gtts
+moviepy
+requests
+nest_asyncio
