@@ -38,17 +38,17 @@ def download_bg_music():
             with open("bg_music.mp3", "wb") as f:
                 f.write(r.content)
         except Exception as e:
-            print(f"Background music download error: {e}")
+            print(f"BG Music error: {e}")
 
 def generate_story_scenes(title):
     system_prompt = (
-        "You are an expert 2D cartoon animation storyteller. "
-        "Create an engaging Hindi moral story based on the user's title. "
-        "Divide the story into 3 sequential visual scenes. "
+        "You are an expert 2D animation storyteller. "
+        "Create an engaging Hindi moral story based on the title. "
+        "Divide it into exactly 3 sequential visual scenes. "
         "Return ONLY a pure valid JSON array of objects with keys: "
         "'scene_no', 'characters', 'visual_prompt', 'narration_hindi'. "
-        "'visual_prompt' MUST be in English specifying vivid 2D animation vector cartoon art style. "
-        "Do not wrap inside markdown code blocks, just raw JSON."
+        "'visual_prompt' must be a short descriptive English prompt (under 25 words) describing the characters and action in 2D cartoon style. "
+        "Never include markdown links or brackets in visual_prompt. Do not use codeblocks, return raw JSON only."
     )
     url = f"https://text.pollinations.ai/{urllib.parse.quote(title)}?system={urllib.parse.quote(system_prompt)}"
     try:
@@ -62,21 +62,21 @@ def generate_story_scenes(title):
         return [
             {
                 "scene_no": 1,
-                "characters": "Main characters introduction",
-                "visual_prompt": f"2D cartoon illustration of {title}, vibrant colors, cute Disney animation style, detailed background",
+                "characters": "Main characters",
+                "visual_prompt": f"2D cartoon illustration of {title}, colorful Disney animation style",
                 "narration_hindi": f"एक समय की बात है, हमारी कहानी की शुरुआत होती है {title} से।"
             },
             {
                 "scene_no": 2,
                 "characters": "Characters interacting",
-                "visual_prompt": f"2D cute cartoon animation style scene, emotional moment about {title}, fairytale background, 16:9",
+                "visual_prompt": f"2D animated cute cartoon scene of {title}, colorful fantasy background",
                 "narration_hindi": "कहानी में सभी किरदारों ने मिलकर एक बड़ा फैसला लिया और आगे बढ़े।"
             },
             {
                 "scene_no": 3,
                 "characters": "Happy ending",
-                "visual_prompt": f"2D colorful cartoon ending of {title}, celebratory joyful environment, aesthetic storybook vector art",
-                "narration_hindi": "अंत में सब कुछ बहुत अच्छा हुआ और इस कहानी से हमें एक सुंदर सीख मिली।"
+                "visual_prompt": f"2D joyful cartoon ending of {title}, vibrant fairytale vector art",
+                "narration_hindi": "अंत में सब कुछ बहुत अच्छा हुआ और कहानी से हमें एक सुंदर सीख मिली।"
             }
         ]
 
@@ -85,12 +85,12 @@ def create_animated_clip(image_path, audio_path):
     duration = audio.duration
     try:
         clip = ImageClip(image_path).with_duration(duration)
-        clip = clip.resized(lambda t: 1 + 0.04 * (t / max(duration, 1)))
+        clip = clip.resized(lambda t: 1 + 0.03 * (t / max(duration, 1)))
         clip = clip.with_audio(audio)
     except Exception:
         clip = ImageClip(image_path).set_duration(duration)
         try:
-            clip = clip.resize(lambda t: 1 + 0.04 * (t / max(duration, 1)))
+            clip = clip.resize(lambda t: 1 + 0.03 * (t / max(duration, 1)))
         except Exception:
             pass
         clip = clip.set_audio(audio)
@@ -110,7 +110,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title = update.message.text.strip()
-    status_msg = await update.message.reply_text(f"📖 '{title}' पर 2D एनीमेशन स्क्रिप्ट और किरदार तैयार किए जा रहे हैं...")
+    status_msg = await update.message.reply_text(f"📖 '{title}' पर 2D स्क्रिप्ट और किरदार तैयार किए जा रहे हैं...")
     loop = asyncio.get_event_loop()
 
     def process():
@@ -124,19 +124,28 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
             narration = sc.get("narration_hindi", title)
             prompt = sc.get("visual_prompt", f"{title} 2D cartoon")
             
+            # Remove any unwanted URLs or markdown artifacts
+            clean_text = re.sub(r"\[.*?\]\(.*?\)", "", prompt)
+            clean_text = re.sub(r"https?://\S+", "", clean_text)
+            clean_text = re.sub(r"[^a-zA-Z0-9\s,]", "", clean_text).strip()
+            
+            # 1. Voiceover
             voice_file = f"voice_{scene_num}.mp3"
             tts = gTTS(text=narration, lang='hi')
             tts.save(voice_file)
             cleanup_files.append(voice_file)
 
-            clean_prompt = urllib.parse.quote(f"{prompt}, 2d cartoon animation, cute flat vector art, Disney Pixar 2d style, high resolution, 16:9")
-            img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){clean_prompt}?width=1280&height=720&nologo=true"
+            # 2. Image generation
+            encoded_prompt = urllib.parse.quote(f"{clean_text}, 2D cute animation, flat vector art, Disney style, bright colors")
+            img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded_prompt}?width=1280&height=720&nologo=true"
+            
             img_file = f"scene_{scene_num}.jpg"
             img_resp = requests.get(img_url, timeout=60)
             with open(img_file, "wb") as f:
                 f.write(img_resp.content)
             cleanup_files.append(img_file)
 
+            # 3. Clip with Ken Burns motion
             clip = create_animated_clip(img_file, voice_file)
             video_clips.append(clip)
 
