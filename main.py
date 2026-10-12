@@ -1,4 +1,4 @@
- import os, requests, threading
+import os, requests, threading
 import nest_asyncio
 from flask import Flask
 from telegram import Update
@@ -7,7 +7,6 @@ from openai import OpenAI
 from gtts import gTTS
 from moviepy.editor import ImageClip, AudioFileClip
 
-# Flask server to keep Render Web Service alive
 server = Flask(__name__)
 
 @server.route('/')
@@ -62,8 +61,3 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_video))
     print("बॉट चालू हो गया है...")
     app.run_polling()
-    
-
-
-    
-    
