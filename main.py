@@ -3,6 +3,7 @@ import re
 import json
 import asyncio
 import urllib.parse
+import urllib.request
 import requests
 from flask import Flask
 import threading
@@ -21,7 +22,7 @@ server = Flask(__name__)
 
 @server.route('/')
 def home():
-    return "2D Animation Story Bot (Long Format) is Running 24/7!"
+    return "Cinematic 2D Story Bot is Active 24/7!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
@@ -38,8 +39,8 @@ def clear_webhook():
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=True"
         requests.get(url, timeout=10)
-    except Exception as e:
-        print(f"Webhook clear error: {e}")
+    except Exception:
+        pass
 
 
 def download_bg_music():
@@ -49,79 +50,100 @@ def download_bg_music():
             with open("bg_music.mp3", "wb") as f:
                 f.write(r.content)
         except Exception as e:
-            print(f"BG Music error: {e}")
+            print(f"BG Music Error: {e}")
 
 
-def clean_prompt_text(text):
-    """किसी भी तरह के लिंक, ब्रैकेट्स या यूआरएल को पूरी तरह साफ़ करना"""
+def clean_text_for_prompt(text):
     if not text:
-        return "indian horror cartoon haunted house scene"
-    # Remove markdown link [text](url)
-    text = re.sub(r'\[.*?\]\(.*?\)', ' ', str(text))
-    # Remove raw URLs
-    text = re.sub(r'https?://\S+', ' ', text)
-    # Remove parentheses, brackets, special symbols
-    text = re.sub(r'[^\w\s,]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text[:120] if text else "spooky Indian 2d animation scene"
+        return "indian horror spooky house 2d animation"
+    # सभी तरह के लिंक्स और ब्रैकेट्स पूरी तरह मिटाना
+    text = re.sub(r'https?://\S+', '', str(text))
+    text = re.sub(r'\[.*?\]', '', text)
+    text = re.sub(r'\(.*?\)', '', text)
+    text = re.sub(r'[^a-zA-Z0-9\s,]', ' ', text)
+    words = text.split()
+    return " ".join(words[:18])
 
 
 def generate_story_scenes(title):
     system_prompt = (
-        "You are an expert Indian horror 2D animation story writer. "
-        "Create an extensive, detailed multi-part story in Hindi based on the title. "
-        "Divide it into 6 sequential dramatic scenes with detailed long narrations. "
+        "You are an expert Indian horror 2D cartoon animation writer. "
+        "Create an intense Hindi horror story divided into 5 sequential scenes. "
         "Return ONLY a pure valid JSON array of objects with keys: "
         "'scene_no', 'visual_prompt', 'narration_hindi'. "
-        "'visual_prompt' must be strictly 5 to 10 English words describing the visual scene (NO LINKS, NO URLS). "
-        "Return raw JSON only, without markdown code fence."
+        "'visual_prompt' must be only 5-10 descriptive English words for a 2D animated scene. "
+        "Never include any URLs or markdown code blocks. Output raw JSON only."
     )
     url = f"https://text.pollinations.ai/{urllib.parse.quote(title)}?system={urllib.parse.quote(system_prompt)}"
     try:
-        res = requests.get(url, timeout=50)
-        text_resp = res.text.strip()
-        text_resp = re.sub(r"^```json\s*", "", text_resp)
-        text_resp = re.sub(r"^```\s*", "", text_resp)
-        text_resp = re.sub(r"\s*```$", "", text_resp)
-        data = json.loads(text_resp)
+        res = requests.get(url, timeout=40)
+        raw_text = res.text.strip()
+        raw_text = re.sub(r"^```json\s*", "", raw_text)
+        raw_text = re.sub(r"^```\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
+        data = json.loads(raw_text)
         if isinstance(data, list) and len(data) > 0:
             return data
     except Exception as e:
-        print(f"Pollinations script error: {e}")
+        print(f"Script Error: {e}")
 
-    # फॉलबैक लंबी डिटेल्ड कहानी
+    # Fallback High Quality Story
     return [
         {
             "scene_no": 1,
-            "visual_prompt": "haunted Indian village old mansion moonlight",
-            "narration_hindi": f"रात का गहरा सन्नाटा छाया हुआ था। गाँव के किनारे स्थित पुरानी हवेली के बारे में कई कहानियाँ मशहूर थीं। कहानी शुरू होती है {title} से, जहाँ कोई भी रात को जाने की हिम्मत नहीं करता था।"
+            "visual_prompt": "dark Indian haunted village old haveli full moon night",
+            "narration_hindi": f"रात के सन्नाटे में पुरानी हवेली की खामोशी कुछ बयां कर रही थी। कहानी की शुरुआत होती है {title} से।"
         },
         {
             "scene_no": 2,
-            "visual_prompt": "creepy dark wooden door opening suspense",
-            "narration_hindi": "हवेली का भारी और पुराना दरवाजा धीरे से खुला। हवा में एक अजीब सी ठंडक थी और चारों तरफ धूल और जाले लगे हुए थे। हर एक कदम के साथ डर बढ़ता ही जा रहा था।"
+            "visual_prompt": "spooky wooden door opening dark hallway shadows",
+            "narration_hindi": "हवेली का भारी दरवाजा अपने आप खुल गया। अंदर से आने वाली अजीब सी सरसराहट किसी अनहोनी का इशारा दे रही थी।"
         },
         {
             "scene_no": 3,
-            "visual_prompt": "mysterious glowing red eyes dark room",
-            "narration_hindi": "कमरे के अंधेरे कोने में अचानक दो चमकती हुई लाल आँखें दिखाई दीं। ऐसा लग रहा था मानो कोई साया काफी समय से किसी का इंतज़ार कर रहा हो।"
+            "visual_prompt": "creepy glowing red eyes mysterious ghost figure",
+            "narration_hindi": "कमरे के अंधेरे कोने में चमकती हुई आंखें नजर आईं। एक रहस्यमयी साया धीरे-धीरे आगे बढ़ रहा था।"
         },
         {
             "scene_no": 4,
-            "visual_prompt": "scary old ghost shadow floating living room",
-            "narration_hindi": "वह साया धीरे-धीरे आगे बढ़ा। एक डरावनी और गूंजती हुई आवाज पूरे कमरे में फैल गई। डर के मारे रोंगटे खड़े हो चुके थे और भागने का कोई रास्ता नहीं दिख रहा था।"
+            "visual_prompt": "terrified person running suspense atmospheric lighting",
+            "narration_hindi": "डर के मारे रोंगटे खड़े हो चुके थे। उस खौफनाक साए से बचने का कोई रास्ता नहीं दिख रहा था।"
         },
         {
             "scene_no": 5,
-            "visual_prompt": "dramatic confrontation between character and ghost",
-            "narration_hindi": "तभी हिम्मत जुटाकर सच्चाई जानने की कोशिश की गई। पता चला कि वह आत्मा किसी गहरे राज और दुख की वजह से इस पुरानी हवेली में सालों से कैद थी।"
-        },
-        {
-            "scene_no": 6,
-            "visual_prompt": "peaceful dawn sunlight falling on old mansion",
-            "narration_hindi": "सूरज की पहली किरण के साथ ही सारा अंधेरा और डर समाप्त हो गया। हवेली को हमेशा के लिए उस रहस्यमयी साए से मुक्ति मिल गई।"
+            "visual_prompt": "morning dawn sunlight falling on quiet mansion",
+            "narration_hindi": "सुबह की पहली किरण के साथ ही वो डरावना साया गायब हो गया, पर हवेली का राज हमेशा के लिए दफन रहा।"
         }
     ]
+
+
+def download_safe_image(prompt_text, save_path):
+    """बिना किसी एरर के सुरक्षित 2D इमेज डाउनलोड करना"""
+    cleaned = clean_text_for_prompt(prompt_text)
+    full_query = f"{cleaned}, 2D indian cartoon animation style, spooky dark atmospheric lighting, high quality vector art"
+    encoded = urllib.parse.quote(full_query)
+    primary_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded}?width=1280&height=720&nologo=true"
+    
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        r = requests.get(primary_url, headers=headers, timeout=50)
+        if r.status_code == 200 and len(r.content) > 5000:
+            with open(save_path, "wb") as f:
+                f.write(r.content)
+            return True
+    except Exception as e:
+        print(f"Pollinations Image Error: {e}")
+
+    # सुरक्षित बैकअप इमेज डाउनलोड (बिना किसी Markdown लिंक के)
+    try:
+        backup_url = "[https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&h=720&fit=crop](https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1280&h=720&fit=crop)"
+        r = requests.get(backup_url, headers=headers, timeout=30)
+        with open(save_path, "wb") as f:
+            f.write(r.content)
+        return True
+    except Exception as e:
+        print(f"Fallback Image Error: {e}")
+        return False
 
 
 def create_animated_clip(image_path, audio_path):
@@ -129,12 +151,12 @@ def create_animated_clip(image_path, audio_path):
     audio_dur = audio.duration
     try:
         clip = ImageClip(image_path).with_duration(audio_dur)
-        clip = clip.resized(lambda t: 1 + 0.02 * (t / max(audio_dur, 1)))
+        clip = clip.resized(lambda t: 1 + 0.03 * (t / max(audio_dur, 1)))
         clip = clip.with_audio(audio)
     except Exception:
         clip = ImageClip(image_path).set_duration(audio_dur)
         try:
-            clip = clip.resize(lambda t: 1 + 0.02 * (t / max(audio_dur, 1)))
+            clip = clip.resize(lambda t: 1 + 0.03 * (t / max(audio_dur, 1)))
         except Exception:
             pass
         clip = clip.set_audio(audio)
@@ -143,20 +165,20 @@ def create_animated_clip(image_path, audio_path):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🎬 *2D स्टोरी वीडियो ऑटोमेशन बॉट*\n\n"
-        "बस किसी भी कहानी का **शीर्षक (Title)** लिखकर भेजें (उदा. 'रामु की हवेली या चुड़ैल मां')।\n\n"
-        "बॉट अपने आप:\n"
-        "📜 पूरी लंबी सीन-बाय-सीन स्क्रिप्ट तैयार करेगा\n"
-        "🎨 2D कार्टून एनिमेशन सीन्स बनाएगा\n"
-        "🎙️ हिंदी वॉयसओवर और बैकग्राउंड म्यूजिक जोड़ेगा\n"
-        "📽️ पूरा वीडियो रेंडर करके भेजेगा!"
+        "🎬 *2D हॉरर और एनिमेशन स्टोरी ऑटोमेशन*\n\n"
+        "मुझे किसी भी कहानी का **टाइटल** भेजें (जैसे: `शापित हवेली का सच` या `डायन का साया`)।\n\n"
+        "बॉट स्वतः:\n"
+        "📜 पूरी विस्तृत स्क्रिप्ट लिखेगा\n"
+        "🎨 2D सिनेमैटिक एनिमेशन सीन्स बनाएगा\n"
+        "🎙️ वॉयसओवर और हॉरर बैकग्राउंड म्यूजिक मिक्स करेगा\n"
+        "📽️ पूरा वीडियो तैयार करके भेजेगा!"
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
 
 async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title = update.message.text.strip()
-    script_msg = await update.message.reply_text(f"📝 '{title}' की विस्तृत स्क्रिप्ट तैयार की जा रही है...")
+    script_msg = await update.message.reply_text(f"📝 '{title}' की पूरी स्क्रिप्ट तैयार की जा रही है...")
 
     loop = asyncio.get_event_loop()
     scenes = await loop.run_in_executor(None, generate_story_scenes, title)
@@ -165,12 +187,11 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
     for sc in scenes:
         script_text += f"🔹 **SCENE {sc.get('scene_no', 1)}:**\n{sc.get('narration_hindi')}\n\n"
 
-    # Telegram की मैसेज लिमिट से सुरक्षित रखते हुए स्क्रिप्ट भेजना
     if len(script_text) > 4000:
         script_text = script_text[:3950] + "..."
     await script_msg.edit_text(script_text, parse_mode="Markdown")
 
-    status_msg = await update.message.reply_text("🚀 सभी सीन्स, आवाज़ और वीडियो रेंडर हो रहे हैं... कृपया 2-3 मिनट प्रतीक्षा करें।")
+    status_msg = await update.message.reply_text("🚀 सभी सीन्स, आवाज़ और वीडियो रेंडर हो रहे हैं... कृपया 2 मिनट प्रतीक्षा करें।")
 
     def process():
         download_bg_music()
@@ -180,11 +201,7 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
         for idx, sc in enumerate(scenes):
             scene_num = idx + 1
             narration = sc.get("narration_hindi", title)
-            raw_prompt = sc.get("visual_prompt", f"{title} haunted cartoon")
-
-            # प्रॉम्प्ट को 100% सुरक्षित और साफ़ करना
-            cleaned = clean_prompt_text(raw_prompt)
-            full_prompt = f"{cleaned}, 2D Indian cartoon animation style, spooky dark atmospheric lighting, Disney Pixar vector art style, high quality"
+            prompt = sc.get("visual_prompt", f"{title} 2D horror")
 
             # 1. Voiceover
             voice_file = f"voice_{scene_num}.mp3"
@@ -192,28 +209,16 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
             tts.save(voice_file)
             cleanup_files.append(voice_file)
 
-            # 2. Image Download
+            # 2. 2D Scene Image
             img_file = f"scene_{scene_num}.jpg"
-            encoded_query = urllib.parse.quote(full_prompt)
-            final_img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){encoded_query}?width=1280&height=720&nologo=true"
+            success = download_safe_image(prompt, img_file)
+            if success:
+                cleanup_files.append(img_file)
+                clip = create_animated_clip(img_file, voice_file)
+                video_clips.append(clip)
 
-            try:
-                res = requests.get(final_img_url, timeout=60)
-                if res.status_code == 200 and len(res.content) > 1000:
-                    with open(img_file, "wb") as f:
-                        f.write(res.content)
-                else:
-                    raise Exception("Pollinations image fetch failed")
-            except Exception:
-                # बैकअप इमेज
-                fallback = requests.get("[https://picsum.photos/1280/720](https://picsum.photos/1280/720)", timeout=30)
-                with open(img_file, "wb") as f:
-                    f.write(fallback.content)
-            cleanup_files.append(img_file)
-
-            # 3. Clip Creation
-            clip = create_animated_clip(img_file, voice_file)
-            video_clips.append(clip)
+        if not video_clips:
+            raise Exception("No video clips generated")
 
         final_video = concatenate_videoclips(video_clips, method="compose")
         total_dur = final_video.duration
@@ -229,10 +234,9 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
                 combined_audio = CompositeAudioClip([final_video.audio, bg_audio])
                 final_video = final_video.with_audio(combined_audio)
             except Exception as e:
-                print(f"BG Music error: {e}")
+                print(f"Audio mix error: {e}")
 
         final_video_file = "story_animation.mp4"
-        # Render की 512MB RAM पर क्रैश न हो इसलिए ultrafast preset
         final_video.write_videofile(
             final_video_file,
             fps=24,
@@ -250,7 +254,7 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
 
     try:
         video_path, temp_files, scene_count = await loop.run_in_executor(None, process)
-        caption = f"🎬 *शीर्षक:* {title}\n✨ *कुल सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूज़िक व हिंदी आवाज़ के साथ!"
+        caption = f"🎬 *शीर्षक:* {title}\n✨ *सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूजिक व हिंदी आवाज के साथ तैयार!"
         with open(video_path, "rb") as vid:
             await update.message.reply_video(video=vid, caption=caption, parse_mode="Markdown")
 
@@ -274,4 +278,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+        
