@@ -1,7 +1,6 @@
-python-telegram-bot[http2]
-openai
-gtts
-moviepy
+python-telegram-bot
 requests
 flask
-anyio
+edge-tts
+moviepy
+Pillow
