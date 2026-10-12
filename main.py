@@ -30,8 +30,17 @@ def run_flask():
 threading.Thread(target=run_flask, daemon=True).start()
 
 # ----------------- CONFIGURATION -----------------
-TELEGRAM_BOT_TOKEN = "8928062533:AAFmg4R7XHOW0rKsYNjaSk6HY5vFUeOENKw"
+TELEGRAM_BOT_TOKEN = "8928062533:AAFlwFvPLyIY-0iQ8FkkyfU9MxgVvgvaY6g"
 BG_MUSIC_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"
+
+
+def clear_webhook():
+    """पुराने किसी भी स्पैम वेबहुक को पूरी तरह हटाने के लिए"""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=True"
+        requests.get(url, timeout=10)
+    except Exception as e:
+        print(f"Webhook clear error: {e}")
 
 
 def download_bg_music():
@@ -51,7 +60,7 @@ def generate_story_scenes(title):
         "Divide it into exactly 3 sequential visual scenes. "
         "Return ONLY a pure valid JSON array of objects with keys: "
         "'scene_no', 'characters', 'visual_prompt', 'narration_hindi'. "
-        "'visual_prompt' must be a short descriptive English prompt under 25 words describing the characters and action in 2D cartoon style. "
+        "'visual_prompt' must be a short descriptive English prompt under 25 words describing characters and action in 2D cartoon style. "
         "Never include markdown links, brackets, or urls. Return raw JSON array only."
     )
     url = f"https://text.pollinations.ai/{urllib.parse.quote(title)}?system={urllib.parse.quote(system_prompt)}"
@@ -195,6 +204,7 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
 
 
 def main():
+    clear_webhook()
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_animated_story))
