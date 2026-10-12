@@ -13,11 +13,9 @@ from moviepy import (
     ImageClip,
     AudioFileClip,
     CompositeAudioClip,
-    concatenate_videoclips,
-    afx
+    concatenate_videoclips
 )
 
-# ----------------- FLASK 24/7 KEEP-ALIVE SERVER -----------------
 server = Flask(__name__)
 
 @server.route('/')
@@ -30,15 +28,8 @@ def run_flask():
 
 threading.Thread(target=run_flask, daemon=True).start()
 
-# ----------------- CONFIGURATION -----------------
-# 
-अपना असली Telegram Bot Token यहाँ रखें
 TELEGRAM_BOT_TOKEN = "8928062533:AAG3U4Uoed3mQ_IGvbd0xRugbMYJQmMIOGk"
-
-
-# बैकग्राउंड म्यूज़िक (मुफ़्त रॉयल्टी-फ्री ट्रैक)
 BG_MUSIC_URL = "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3"
-
 
 def download_bg_music():
     if not os.path.exists("bg_music.mp3"):
@@ -49,11 +40,7 @@ def download_bg_music():
         except Exception as e:
             print(f"Background music download error: {e}")
 
-
 def generate_story_scenes(title):
-    """
-    मुफ़्त AI मॉडल (Pollinations Text API) से कहानी, किरदार और सीन्स का JSON स्ट्रक्चर बनाना
-    """
     system_prompt = (
         "You are an expert 2D cartoon animation storyteller. "
         "Create an engaging Hindi moral story based on the user's title. "
@@ -63,21 +50,15 @@ def generate_story_scenes(title):
         "'visual_prompt' MUST be in English specifying vivid 2D animation vector cartoon art style. "
         "Do not wrap inside markdown code blocks, just raw JSON."
     )
-    
     url = f"https://text.pollinations.ai/{urllib.parse.quote(title)}?system={urllib.parse.quote(system_prompt)}"
-    
     try:
         res = requests.get(url, timeout=45)
         text_resp = res.text.strip()
-        # Clean markdown if present
         text_resp = re.sub(r"^```json\s*", "", text_resp)
         text_resp = re.sub(r"^```\s*", "", text_resp)
         text_resp = re.sub(r"\s*```$", "", text_resp)
-        scenes = json.loads(text_resp)
-        return scenes
-    except Exception as e:
-        print(f"AI Script Error: {e}, using default fallback template.")
-        # Fallback if text API fails
+        return json.loads(text_resp)
+    except Exception:
         return [
             {
                 "scene_no": 1,
@@ -99,36 +80,26 @@ def generate_story_scenes(title):
             }
         ]
 
-
 def create_animated_clip(image_path, audio_path):
-    """
-    तस्वीर को स्थिर रखने के बजाय Ken Burns (Slow 2D Zoom/Motion) एनीमेशन जोड़ना
-    """
     audio = AudioFileClip(audio_path)
     duration = audio.duration
-
     try:
-        # MoviePy 2.x
         clip = ImageClip(image_path).with_duration(duration)
-        # 2D Motion Zoom Effect
         clip = clip.resized(lambda t: 1 + 0.04 * (t / max(duration, 1)))
         clip = clip.with_audio(audio)
     except Exception:
-        # MoviePy 1.x fallback
         clip = ImageClip(image_path).set_duration(duration)
         try:
             clip = clip.resize(lambda t: 1 + 0.04 * (t / max(duration, 1)))
         except Exception:
             pass
         clip = clip.set_audio(audio)
-
     return clip
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🎬 *2D एनिमेटेड स्टोरी वीडियो बॉट में आपका स्वागत है!*\n\n"
-        "बस मुझे किसी भी कहानी का **शीर्षक (Title)** लिखकर भेजें (उदा. 'चालाक लोमड़ी और कौवा', 'जादुई जंगल')।\n\n"
+        "बस मुझे किसी भी कहानी का **शीर्षक (Title)** लिखकर भेजें।\n\n"
         "बॉट अपने आप:\n"
         "✨ किरदार और स्क्रिप्ट चुनेगा\n"
         "🎨 2D कार्टून एनीमेशन सीन बनाएगा\n"
@@ -137,17 +108,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
-
 async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title = update.message.text.strip()
     status_msg = await update.message.reply_text(f"📖 '{title}' पर 2D एनीमेशन स्क्रिप्ट और किरदार तैयार किए जा रहे हैं...")
-
     loop = asyncio.get_event_loop()
 
     def process():
         download_bg_music()
         scenes = generate_story_scenes(title)
-
         video_clips = []
         cleanup_files = []
 
@@ -156,82 +124,62 @@ async def generate_animated_story(update: Update, context: ContextTypes.DEFAULT_
             narration = sc.get("narration_hindi", title)
             prompt = sc.get("visual_prompt", f"{title} 2D cartoon")
             
-            # 1. Hindi Voiceover
             voice_file = f"voice_{scene_num}.mp3"
             tts = gTTS(text=narration, lang='hi')
             tts.save(voice_file)
             cleanup_files.append(voice_file)
 
-            # 2. 2D Cartoon Aesthetic Image
             clean_prompt = urllib.parse.quote(f"{prompt}, 2d cartoon animation, cute flat vector art, Disney Pixar 2d style, high resolution, 16:9")
             img_url = f"[https://image.pollinations.ai/prompt/](https://image.pollinations.ai/prompt/){clean_prompt}?width=1280&height=720&nologo=true"
-            
             img_file = f"scene_{scene_num}.jpg"
             img_resp = requests.get(img_url, timeout=60)
             with open(img_file, "wb") as f:
                 f.write(img_resp.content)
             cleanup_files.append(img_file)
 
-            # 3. Motion Clip
             clip = create_animated_clip(img_file, voice_file)
             video_clips.append(clip)
 
-        # सीन्स को आपस में जोड़ना
         final_video = concatenate_videoclips(video_clips, method="compose")
         total_duration = final_video.duration
 
-        # 4. बैकग्राउंड म्यूज़िक मिक्सिंग
         if os.path.exists("bg_music.mp3"):
             try:
                 bg_audio = AudioFileClip("bg_music.mp3")
-                # लूप और वॉल्यूम धीमा करना (0.12x ताकि आवाज़ साफ़ सुनाई दे)
                 bg_audio = bg_audio.subclipped(0, min(total_duration, bg_audio.duration))
                 try:
                     bg_audio = bg_audio.with_volume_scaled(0.12)
                 except AttributeError:
                     bg_audio = bg_audio.volumex(0.12)
-                
                 combined_audio = CompositeAudioClip([final_video.audio, bg_audio])
                 final_video = final_video.with_audio(combined_audio)
             except Exception as e:
                 print(f"BG Music mixing skipped: {e}")
 
-        # फाइनल वीडियो रेंडर
         final_video_file = "story_animation.mp4"
-        final_video.write_videofile(
-            final_video_file,
-            fps=24,
-            codec="libx264",
-            audio_codec="aac"
-        )
-
-        # मेमोरी फ़्री करना
+        final_video.write_videofile(final_video_file, fps=24, codec="libx264", audio_codec="aac")
         final_video.close()
         for c in video_clips:
             c.close()
 
         return final_video_file, cleanup_files, len(scenes)
 
-    await status_msg.edit_text("🎨 2D कार्टून सीन्स, आवाज़ और एनीमेशन रेंडर हो रहा है... (कृपया 1-2 मिनट प्रतीक्षा करें)")
+    await status_msg.edit_text("🎨 2D कार्टून सीन्स, आवाज़ और एनीमेशन रेंडर हो रहा है... (1-2 मिनट प्रतीक्षा करें)")
 
     try:
         video_path, temp_files, scene_count = await loop.run_in_executor(None, process)
-
-        caption = f"🎬 *शीर्षक:* {title}\n✨ *2D एनीमेशन सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूज़िक और हिंदी वॉयसओवर के साथ तैयार!"
+        caption = f"🎬 *शीर्षक:* {title}\n✨ *सीन्स:* {scene_count}\n🎵 बैकग्राउंड म्यूज़िक और हिंदी आवाज़ के साथ!"
         with open(video_path, "rb") as vid:
             await update.message.reply_video(video=vid, caption=caption, parse_mode="Markdown")
 
-        # सफ़ाई (Cleanup)
         for f in temp_files + [video_path]:
             if os.path.exists(f):
                 try:
                     os.remove(f)
                 except Exception:
                     pass
-
     except Exception as e:
-        await update.message.reply_text(f"❌ वीडियो बनाने में कोई समस्या आई: {e}")
-
+        await update.message.reply_text(f"❌ त्रुटि: {e}")
 
 def main():
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
@@ -239,7 +187,6 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, generate_animated_story))
     app.run_polling()
 
-
 if __name__ == "__main__":
     main()
-    
+                
