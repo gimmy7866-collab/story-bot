@@ -1,7 +1,7 @@
-python-telegram-bot
+python-telegram-bot[http2]
 openai
 gtts
 moviepy
 requests
-nest_asyncio
 flask
+anyio
