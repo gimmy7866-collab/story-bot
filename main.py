@@ -23,8 +23,9 @@ def run_flask():
 threading.Thread(target=run_flask, daemon=True).start()
 
 TELEGRAM_BOT_TOKEN = "8928062533:AAGg9TLhoD0yITLayIskdAUJbQyf03me5qQ"
-OPENAI_API_KEY = "OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+
 
 
 client = OpenAI(api_key=OPENAI_API_KEY)
