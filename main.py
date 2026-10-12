@@ -22,7 +22,7 @@ def run_flask():
 
 threading.Thread(target=run_flask, daemon=True).start()
 
-TELEGRAM_BOT_TOKEN = "8928062533:AAFaU5SdY3r54ol7y-VKuvLJPjAjXcsTsJE"
+TELEGRAM_BOT_TOKEN = "8928062533:AAGUL70Z47OSSj_PBrrZi2sQf6fTAayzpIQ"
 OPENAI_API_KEY = "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"
 
 client = OpenAI(api_key=OPENAI_API_KEY)
